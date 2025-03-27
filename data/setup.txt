@@ -4,3 +4,5 @@ depot, parking note time_window: [0,8]
 
 2/3 first: van customers
 1/3 last: robot customers
+
+service_time = 0.1
