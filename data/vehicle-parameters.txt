@@ -1,0 +1,15 @@
+Van:
+    Average travel speed: 25 km/h
+    Battery capacity: 100 kWh
+    Capacity: 1000 kg
+    Travel cost rate: 2 /km
+    Energy consumption rate: 0.5 kWh/km
+    Recharging rate: 25 kWh/h
+
+Robot:
+    Average travel speed: 5 km/h
+    Battery capacity: 1.5 kWh
+    Capacity: 50 kg
+    Travel cost rate: 0.5 /km
+    Energy consumption rate: 0.1 kWh/km
+    Recharging rate: 2.5 kWh/h
