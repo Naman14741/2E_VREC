@@ -95,12 +95,23 @@ class Read:
             return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
 
         def create_distance_matrix(data):
-            locations = [tuple(data['depot'])] + data['parking_nodes_set'] + data['customers_set']
+            # Put depot at index 0, followed by other locations
+            depot_location = tuple(data['depot'])
+            other_locations = data['parking_nodes_set'] + data['customers_set']
+            locations = [depot_location] + other_locations
             n = len(locations)
 
             distance_matrix = np.zeros((n, n))
-            for i in range(n):
-                for j in range(n):
+            
+            # First, calculate depot distances (first row and column)
+            for j in range(1, n):
+                depot_to_location = manhattan_distance(depot_location, locations[j])
+                distance_matrix[0][j] = depot_to_location  # Depot to location j
+                distance_matrix[j][0] = depot_to_location  # Location j to depot
+            
+            # Then calculate distances between other locations
+            for i in range(1, n):
+                for j in range(1, n):
                     if i != j:
                         distance_matrix[i][j] = manhattan_distance(locations[i], locations[j])
 
