@@ -72,7 +72,7 @@ class Read:
             output.append({
                 'NCust': data.get('NCust', 0),
                 'NSate': data.get('NSate', 0),
-                'depot': data.get('depot', []),
+                'depot': tuple(data.get('depot', [])),
                 'parking_nodes_set': parking_nodes_tuples,
                 'customers_set': customers_tuples,
                 'time_windows_set': time_windows_tuples,
@@ -82,3 +82,6 @@ class Read:
         test = max(test, 0)
         test = min(test, 19)
         return output[test]
+
+r = Read().testcase()
+print(r)
