@@ -64,24 +64,27 @@ class Read:
             customers = data.get('customers_set', [[]])[i]
             time_windows = data.get('time_windows_set', [[]])[i]
 
-            # Chuyển đổi danh sách thành danh sách tuple có hai phần tử từ hai danh sách con
-            parking_nodes_tuples = list(zip(parking_nodes[0], parking_nodes[1])) if len(parking_nodes) >= 2 else []
-            customers_tuples = list(zip(customers[0], customers[1])) if len(customers) >= 2 else []
+            # Chuyển danh sách thành dictionary với khóa 's{i}'
+            parking_nodes_dict = {f's{idx}': (parking_nodes[0][idx], parking_nodes[1][idx])
+                                  for idx in range(len(parking_nodes[0]))} if len(parking_nodes) >= 2 else {}
+
+            # Chuyển danh sách khách hàng thành dictionary với khóa 'c{i}'
+            customers_dict = {f'c{idx}': (customers[0][idx], customers[1][idx])
+                              for idx in range(len(customers[0]))} if len(customers) >= 2 else {}
+
+            # Chuyển danh sách time_windows thành danh sách tuple
             time_windows_tuples = list(zip(time_windows[0], time_windows[1])) if len(time_windows) >= 2 else []
 
             output.append({
                 'NCust': data.get('NCust', 0),
                 'NSate': data.get('NSate', 0),
                 'depot': tuple(data.get('depot', [])),
-                'parking_nodes_set': parking_nodes_tuples,
-                'customers_set': customers_tuples,
-                'time_windows_set': time_windows_tuples,
-                'demands_set': data.get('demands_set', [[]])[i]
+                'sate': parking_nodes_dict,
+                'cust': customers_dict,
+                'windows': time_windows_tuples,
+                'demands': data.get('demands_set', [[]])[i]
             })
 
         test = max(test, 0)
         test = min(test, 19)
         return output[test]
-
-r = Read().testcase()
-print(r)
