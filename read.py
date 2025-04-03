@@ -1,11 +1,11 @@
 import ast
+import numpy as np
 
 
 class Read:
 
-
     @staticmethod
-    def parameters(path):
+    def parameters(path='data/vehicle-parameters.txt'):
         van_params = {}
         robot_params = {}
 
@@ -26,13 +26,16 @@ class Read:
                 parts = line.split(":")
                 if len(parts) == 2:
                     key = parts[0].strip().lower().replace(" ", "_")
-                    value = float(parts[1].split()[0])
-                    current_section[key] = value
+                    try:
+                        value = float(parts[1].split()[0])
+                        current_section[key] = value
+                    except ValueError:
+                        continue  # Bỏ qua dòng không hợp lệ
 
         return van_params, robot_params
 
     @staticmethod
-    def testcase(instances='tiny', test=0):
+    def read_testcase(instances='tiny', test=0):
         paths = {
             'large': 'data/large-scale instances.txt',
             'medium': 'data/medium-scale instances.txt',
@@ -59,26 +62,68 @@ class Read:
             raise FileNotFoundError(f"File {path} not found.")
 
         output = []
-        for i in range(20):
-            parking_nodes = data.get('parking_nodes_set', [[]])[i]
-            customers = data.get('customers_set', [[]])[i]
-            time_windows = data.get('time_windows_set', [[]])[i]
+        for i in range(min(20, len(data.get('parking_nodes_set', [])))):
+            parking_nodes = data.get('parking_nodes_set', [[]])
+            customers = data.get('customers_set', [[]])
+            time_windows = data.get('time_windows_set', [[]])
 
-            # Chuyển đổi danh sách thành danh sách tuple có hai phần tử từ hai danh sách con
-            parking_nodes_tuples = list(zip(parking_nodes[0], parking_nodes[1])) if len(parking_nodes) >= 2 else []
-            customers_tuples = list(zip(customers[0], customers[1])) if len(customers) >= 2 else []
-            time_windows_tuples = list(zip(time_windows[0], time_windows[1])) if len(time_windows) >= 2 else []
+            parking_nodes_tuples = list(zip(parking_nodes[i][0], parking_nodes[i][1])) if len(
+                parking_nodes) > i and len(parking_nodes[i]) >= 2 else []
+            customers_tuples = list(zip(customers[i][0], customers[i][1])) if len(customers) > i and len(
+                customers[i]) >= 2 else []
+            time_windows_tuples = list(zip(time_windows[i][0], time_windows[i][1])) if len(time_windows) > i and len(
+                time_windows[i]) >= 2 else []
 
             output.append({
                 'NCust': data.get('NCust', 0),
                 'NSate': data.get('NSate', 0),
-                'depot': data.get('depot', []),
+                'depot': tuple(data.get('depot', ())),
                 'parking_nodes_set': parking_nodes_tuples,
                 'customers_set': customers_tuples,
                 'time_windows_set': time_windows_tuples,
-                'demands_set': data.get('demands_set', [[]])[i]
+                'demands_set': data.get('demand_set', [[]])[i] if len(data.get('demand_set', [])) > i else []
             })
 
-        test = max(test, 0)
-        test = min(test, 19)
+        test = max(0, min(test, len(output) - 1))  # Đảm bảo test nằm trong phạm vi hợp lệ
         return output[test]
+
+    @staticmethod
+    def old_input(instance='tiny', testcase=0):
+        data = Read().read_testcase(instance, testcase)
+
+        def manhattan_distance(p1, p2):
+            return abs(p1[0] - p2[0]) + abs(p1[1] - p2[1])
+
+        def create_distance_matrix(data):
+            locations = [tuple(data['depot'])] + data['parking_nodes_set'] + data['customers_set']
+            n = len(locations)
+
+            distance_matrix = np.zeros((n, n))
+            for i in range(n):
+                for j in range(n):
+                    if i != j:
+                        distance_matrix[i][j] = manhattan_distance(locations[i], locations[j])
+
+            return distance_matrix
+
+        distance_matrix = np.array(create_distance_matrix(data))
+        depot = 0
+        charging_stations = list(range(1, 1 + data['NSate']))
+        customer = list(range(1 + data['NSate'], 1 + data['NSate'] + data['NCust']))
+        customers_robot_only = customer[round(len(customer) * 2 / 3):]
+        customers_both = customer[:round(len(customer) * 2 / 3)]
+
+        customer_demand = {
+            customer[i]: data['demands_set'][i] if i < len(data['demands_set']) else 0
+            for i in range(len(customer))
+        }
+
+        time_windows = {0: (0, 8)}
+        time_windows.update({idx: (0, 8) for idx in charging_stations})
+        time_windows.update({customer[i]: data['time_windows_set'][i] for i in range(len(customer))})
+
+        service_time = {0: 0}
+        service_time.update({idx: 0 for idx in charging_stations})
+        service_time.update({idx: 0.1 for idx in customer})
+
+        return distance_matrix, depot, charging_stations, customers_robot_only, customers_both, customer_demand, time_windows, service_time
