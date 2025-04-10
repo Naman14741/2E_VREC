@@ -35,7 +35,7 @@ class Read:
         return van_params, robot_params
 
     @staticmethod
-    def read_testcase(instances='tiny', test=0):
+    def read_testcase(instance='tiny', testcase=0):
         paths = {
             'large': 'data/large-scale instances.txt',
             'medium': 'data/medium-scale instances.txt',
@@ -43,7 +43,7 @@ class Read:
             'tiny': 'data/tiny-scale instances.txt'
         }
 
-        path = paths.get(instances, 'data/tiny-scale instances.txt')
+        path = paths.get(instance, 'data/tiny-scale instances.txt')
 
         data = {}
         try:
@@ -84,8 +84,8 @@ class Read:
                 'demands_set': data.get('demand_set', [[]])[i] if len(data.get('demand_set', [])) > i else []
             })
 
-        test = max(0, min(test, len(output) - 1))  # Đảm bảo test nằm trong phạm vi hợp lệ
-        return output[test]
+        testcase = max(0, min(testcase, len(output) - 1))  # Đảm bảo test nằm trong phạm vi hợp lệ
+        return output[testcase]
 
     @staticmethod
     def old_input(instance='tiny', testcase=0):
