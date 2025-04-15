@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-class Route:
+class VehicleRoute:
     """
     Represents a van and robot route of vehicle number k in 2E-VREC problem
     """
