@@ -13,31 +13,31 @@ class Destroy:
 
     def random_customer_removal(self, solution: VRPECSolution,
                             random_state: np.random.RandomState) -> VRPECSolution:
-    """
-    Remove a random customer from the solution.
-    """
-    destroyed = solution.copy()
-    assigned_customers = [c for c in destroyed.all_customers
-                          if c not in destroyed.unassigned_customers]
+        """
+            Remove a random customer from the solution.
+            """
+        destroyed = solution.copy()
+        assigned_customers = [c for c in destroyed.all_customers
+                            if c not in destroyed.unassigned_customers]
 
-    if not assigned_customers:
-        return destroyed  # No customers to remove
+        if not assigned_customers:
+            return destroyed  # No customers to remove
 
-    customer_to_remove = random_state.choice(assigned_customers)
+        customer_to_remove = random_state.choice(assigned_customers)
 
-    for route in destroyed.van_routes:
-        if customer_to_remove in route.nodes:
-            idx = route.nodes.index(customer_to_remove)
-            route.nodes.pop(idx)
-            if idx < len(route.robot_onboard):
-                route.robot_onboard.pop(idx)
+        for route in destroyed.van_routes:
+            if customer_to_remove in route.nodes:
+                idx = route.nodes.index(customer_to_remove)
+                route.nodes.pop(idx)
+                if idx < len(route.robot_onboard):
+                    route.robot_onboard.pop(idx)
 
-    for route in destroyed.robot_routes:
-        if customer_to_remove in route.nodes:
-            route.nodes.remove(customer_to_remove)
+        for route in destroyed.robot_routes:
+            if customer_to_remove in route.nodes:
+                route.nodes.remove(customer_to_remove)
 
-    destroyed.unassigned_customers.add(customer_to_remove)
-    return destroyed
+        destroyed.unassigned_customers.add(customer_to_remove)
+        return destroyed
 
     def greedy_customer_removal(self, solution: VRPECSolution) -> VRPECSolution:
         """
@@ -91,12 +91,12 @@ class Destroy:
     
         destroyed.unassigned_customers.add(best_customer)
         return destroyed
-    def customer_removal(solution: VRPECSolution, random_state: np.random.RandomState) -> VRPECSolution:
+    def customer_removal(self, solution: VRPECSolution, random_state: np.random.RandomState) -> VRPECSolution:
         rand_num = np.random.rand()
         if rand_num < self.beta:
-            destroyed = random_customer_removal(solution, random_state)
+            destroyed = self.random_customer_removal(solution, random_state)
         else:
-            destroyed = greedy_customer_removal(solution)
+            destroyed = self.greedy_customer_removal(solution)
         return destroyed
     
     def station_removal(self, solution: VRPECSolution,
@@ -207,12 +207,12 @@ class Destroy:
     
         return destroyed
     
-    def route_closure(self, solution: VRPECSolution, random_state: np.random.RandomState -> VRPECSolution:
+    def route_closure(self, solution: VRPECSolution, random_state: np.random.RandomState) -> VRPECSolution:
         rand_num = np.random.rand()
         if rand_num < self.beta:
-            destroyed = random_route_closure(solution, random_state)
+            destroyed = self.random_route_closure(solution, random_state)
         else:
-            destroyed = greedy_route_closure(solution)
+            destroyed = self.greedy_route_closure(solution)
         return destroyed
     
     
@@ -250,7 +250,7 @@ class Destroy:
     
             destroyed.van_routes.pop(van_route_idx)
     
-        return destroye
+        return destroyed
 
 
     def station_removal_redundant(self):
