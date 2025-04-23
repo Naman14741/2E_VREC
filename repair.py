@@ -4,17 +4,15 @@ from route import VehicleRoute
 from solution import VRPECSolution
 from support import *
 
-
 class Repair:
-    # Repair method 1
     @staticmethod
-    def route_reconstruction(solution: VRPECSolution):
+    def route_reconstruction(solution: VRPECSolution, random_state: np.random.RandomState):
         """
         Ensures that the solution is feasible, the same method as initial solution
         """
         repaired = solution.copy()
         while repaired.unassigned_customers:
-            np.random.shuffle(repaired.unassigned_customers)
+            random_state.shuffle(repaired.unassigned_customers)
             first_customer = repaired.unassigned_customers[0]
             repaired.unassigned_customers.remove(first_customer)
 
@@ -30,31 +28,28 @@ class Repair:
 
             if first_customer in repaired.customers_robot_only:
                 # Customer can only be served by robot
-                station = \
-                    station_nearest_customer(repaired.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
+                station = station_nearest_customer(repaired.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
                 route.open_robot_route(first_customer, station)
             else:  # Customer can be served by either van or robot
-                p = np.random.rand()
+                p = random_state.rand()
                 if p < 0.5:
                     # Open van route
                     route.open_van_route(first_customer)
                 else:
                     # Open robot route
-                    station = \
-                        station_nearest_customer(repaired.distance_matrix, route.get_unassigned_stations(), first_customer)[
-                            0]
+                    station = station_nearest_customer(repaired.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
                     route.open_robot_route(first_customer, station)
 
             # Create a copy of unassigned customers to iterate over
             customers_to_check = repaired.unassigned_customers.copy()
-            np.random.shuffle(customers_to_check)
+            random_state.shuffle(customers_to_check)
 
             for next_customer in customers_to_check:
                 if next_customer in repaired.customers_robot_only:
                     if route.insert_customer_robot_into_route(next_customer):
                         repaired.unassigned_customers.remove(next_customer)
                 else:
-                    p = np.random.rand()
+                    p = random_state.rand()
                     if p < 0.5:
                         if route.insert_customer_van_into_route(next_customer):
                             repaired.unassigned_customers.remove(next_customer)
@@ -64,10 +59,11 @@ class Repair:
 
             # Add the route to the solution
             repaired.routes.append(route)
+        return repaired
 
     # Support for repair method 2: Customer insertion
     @staticmethod
-    def _customer_insertion_random(self, solution: VRPECSolution):
+    def _customer_insertion_random(solution: VRPECSolution):
         """
         Sort un-served customers list into feasible position of 2E-VREC route until all customers have been tried.
         """

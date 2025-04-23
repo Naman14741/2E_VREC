@@ -88,7 +88,7 @@ class Read:
         return output[testcase]
 
     @staticmethod
-    def old_input(instance='tiny', testcase=0):
+    def old_input(instance='small', testcase=1):
         data = Read().read_testcase(instance, testcase)
 
         def manhattan_distance(p1, p2):
@@ -102,13 +102,13 @@ class Read:
             n = len(locations)
 
             distance_matrix = np.zeros((n, n))
-            
+
             # First, calculate depot distances (first row and column)
             for j in range(1, n):
                 depot_to_location = manhattan_distance(depot_location, locations[j])
                 distance_matrix[0][j] = depot_to_location  # Depot to location j
                 distance_matrix[j][0] = depot_to_location  # Location j to depot
-            
+
             # Then calculate distances between other locations
             for i in range(1, n):
                 for j in range(1, n):
@@ -131,7 +131,14 @@ class Read:
 
         time_windows = {0: (0, 8)}
         time_windows.update({idx: (0, 8) for idx in charging_stations})
-        time_windows.update({customer[i]: data['time_windows_set'][i] for i in range(len(customer))})
+
+        # Fix for time_windows - ensure we don't access out of range indices
+        for i in range(len(customer)):
+            if i < len(data['time_windows_set']):
+                time_windows[customer[i]] = data['time_windows_set'][i]
+            else:
+                # Default time window for customers without explicit time windows
+                time_windows[customer[i]] = (0, 8)
 
         service_time = {0: 0}
         service_time.update({idx: 0 for idx in charging_stations})

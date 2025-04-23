@@ -57,7 +57,7 @@ class VRPECSolution:
 
         return new_solution
 
-    def objective_value(self) -> float:
+    def objective(self) -> float:
         total_cost = 0
         for route in self.routes:
             total_cost += route.get_route_cost()
@@ -80,7 +80,7 @@ class VRPECSolution:
             if first_customer in self.customers_robot_only:
                 # Customer can only be served by robot
                 station = \
-                station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
+                    station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
                 if route.open_robot_route(first_customer, station):
                     self.unassigned_customers.remove(first_customer)
             else:  # Customer can be served by either van or robot
@@ -92,7 +92,8 @@ class VRPECSolution:
                 else:
                     # Open robot route
                     station = \
-                    station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
+                        station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[
+                            0]
                     if route.open_robot_route(first_customer, station):
                         self.unassigned_customers.remove(first_customer)
 
@@ -115,3 +116,6 @@ class VRPECSolution:
 
             # Add the route to the solution
             self.routes.append(route)
+
+        # Return self for method chaining and to make the initial solution usable
+        return self
