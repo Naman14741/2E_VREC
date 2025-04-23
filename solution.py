@@ -64,28 +64,53 @@ class VRPECSolution:
         return total_cost
 
     def initial_solution(self):
-        while len(self.unassigned_customers) > 0:
+        while self.unassigned_customers:
             np.random.shuffle(self.unassigned_customers)
-            customer = self.unassigned_customers[0]
+            first_customer = self.unassigned_customers[0]
+            self.unassigned_customers.remove(first_customer)
 
-            # Khởi tạo tuyến cho khách hàng
-            route = VehicleRoute(distance_matrix=self.distance_matrix, depot=self.depot, unassigned_stations=self.charging_stations)
-            if customer in self.customers_robot_only:
-                # Nếu khách hàng chỉ phục vụ bởi robot
-                station = station_nearest_customer(self.distance_matrix, self.charging_stations, customer)[0]
-                route.open_robot_route(customer, station)
-                self.unassigned_customers.remove(customer)
-            else: # Nếu khách hàng có thể phục vụ bởi cả xe tải và robot
+            # Create a new route for the first customer
+            route = VehicleRoute(
+                distance_matrix=self.distance_matrix,
+                depot=self.depot,
+                unassigned_stations=self.charging_stations.copy(),
+                station_list=self.charging_stations,
+                customer_list=self.all_customers,
+                customer_demand=self.customer_demand
+            )
+
+            if first_customer in self.customers_robot_only:
+                # Customer can only be served by robot
+                station = \
+                station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
+                route.open_robot_route(first_customer, station)
+            else:  # Customer can be served by either van or robot
                 p = np.random.rand()
                 if p < 0.5:
-                    # Mở tuyến xe tải
-                    route.open_van_route(customer)
-                    self.unassigned_customers.remove(customer)
+                    # Open van route
+                    route.open_van_route(first_customer)
                 else:
-                    # Mở tuyến robot
-                    station = station_nearest_customer(self.distance_matrix, self.charging_stations, customer)[0]
-                    route.open_robot_route(customer, station)
-                    self.unassigned_customers.remove(customer)
+                    # Open robot route
+                    station = \
+                    station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
+                    route.open_robot_route(first_customer, station)
 
-            # Thêm khách hàng vào tuyến
-            np.random.shuffle(self.unassigned_customers)
+            # Create a copy of unassigned customers to iterate over
+            customers_to_check = self.unassigned_customers.copy()
+            np.random.shuffle(customers_to_check)
+
+            for next_customer in customers_to_check:
+                if next_customer in self.customers_robot_only:
+                    if route.insert_customer_robot_into_route(next_customer):
+                        self.unassigned_customers.remove(next_customer)
+                else:
+                    p = np.random.rand()
+                    if p < 0.5:
+                        if route.insert_customer_van_into_route(next_customer):
+                            self.unassigned_customers.remove(next_customer)
+                    else:
+                        if route.insert_customer_robot_into_route(next_customer):
+                            self.unassigned_customers.remove(next_customer)
+
+            # Add the route to the solution
+            self.routes.append(route)
