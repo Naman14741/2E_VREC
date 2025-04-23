@@ -1,6 +1,4 @@
 from typing import Optional, Tuple, Set
-import numpy as np
-
 from solution import VRPECSolution
 from route import VehicleRoute, VehicleType
 
@@ -178,7 +176,7 @@ class HeuristicFeasible:
         van_max_capacity = self.van_params.get("battery_capacity", 0.0)
         robot_max_capacity = self.robot_params.get("battery_capacity", 0.0)
         van_energy_rate = self.van_params.get("energy_consumption_rate", float('inf'))
-        van_efficiency = self.van_params.get("charging_efficiency", 1.0)
+        van_efficiency = self.van_params.get("charge_rate", 1.0)
         
         robot_energy_low, robot_energy_high = self.get_robot_independent_energy_needs(
             route, current_node_id
@@ -426,7 +424,7 @@ class HeuristicFeasible:
         current_robot_battery = self.robot_params.get("battery_capacity", 0.0)
         van_speed = self.van_params.get('speed', float('inf'))
         van_energy_rate = self.van_params.get("energy_consumption_rate", float('inf'))
-        van_efficiency = self.van_params.get("charging_efficiency", 1.0)
+        van_efficiency = self.van_params.get("charge_rate", 1.0)
         if van_speed <= 1e-9: 
             return False
 
@@ -455,7 +453,8 @@ class HeuristicFeasible:
             arrival_time_at_node2 = departure_time1 + travel_time
             earliest_arrival2, latest_arrival2 = self.time_windows.get(node2_id, (0.0, float('inf')))
 
-            if check_time_windows and arrival_time_at_node2 > latest_arrival2 + 1e-6: return False
+            if check_time_windows and arrival_time_at_node2 > latest_arrival2 + 1e-6: 
+                return False
             current_time = max(arrival_time_at_node2, earliest_arrival2)
 
             # --- 3. Cập nhật Năng lượng sau di chuyển ---
