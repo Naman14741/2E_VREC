@@ -2,7 +2,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from route import VehicleRoute, VehicleType
+from route import VehicleRoute
 from support import *
 
 
