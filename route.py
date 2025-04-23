@@ -76,16 +76,14 @@ class VehicleRoute:
         for i in range(len(self._van_route) - 1):
             from_node = self._van_route[i][0]
             to_node = self._van_route[i + 1][0]
-            cost += self.distance_matrix[from_node][to_node] / self.van_params['speed'] * self.van_params[
-                'travel_cost_rate']
+            cost += self.distance_matrix[from_node][to_node]  * self.van_params['travel_cost_rate']
 
         # Calculate the cost of the robot route
         for i in range(len(self._robot_route) - 1):
             if self._robot_route[i][1] == VehicleType.ROBOT_ONLY:
                 from_node = self._robot_route[i][0]
                 to_node = self._robot_route[i + 1][0]
-                cost += self.distance_matrix[from_node][to_node] / self.robot_params['speed'] * self.robot_params[
-                    'travel_cost_rate']
+                cost += self.distance_matrix[from_node][to_node] * self.robot_params['travel_cost_rate']
         return cost
 
     def get_van_demand(self) -> float:
