@@ -67,8 +67,6 @@ class VRPECSolution:
         while self.unassigned_customers:
             np.random.shuffle(self.unassigned_customers)
             first_customer = self.unassigned_customers[0]
-            self.unassigned_customers.remove(first_customer)
-
             # Create a new route for the first customer
             route = VehicleRoute(
                 distance_matrix=self.distance_matrix,
@@ -83,17 +81,20 @@ class VRPECSolution:
                 # Customer can only be served by robot
                 station = \
                 station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
-                route.open_robot_route(first_customer, station)
+                if route.open_robot_route(first_customer, station):
+                    self.unassigned_customers.remove(first_customer)
             else:  # Customer can be served by either van or robot
                 p = np.random.rand()
                 if p < 0.5:
                     # Open van route
-                    route.open_van_route(first_customer)
+                    if route.open_van_route(first_customer):
+                        self.unassigned_customers.remove(first_customer)
                 else:
                     # Open robot route
                     station = \
                     station_nearest_customer(self.distance_matrix, route.get_unassigned_stations(), first_customer)[0]
-                    route.open_robot_route(first_customer, station)
+                    if route.open_robot_route(first_customer, station):
+                        self.unassigned_customers.remove(first_customer)
 
             # Create a copy of unassigned customers to iterate over
             customers_to_check = self.unassigned_customers.copy()

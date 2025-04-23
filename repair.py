@@ -1,9 +1,9 @@
-from typing import List, Dict, Tuple
 import numpy as np
 
-from route import VehicleRoute, VehicleType
-from support import *
+from route import VehicleRoute
 from solution import VRPECSolution
+from support import *
+
 
 class Repair:
     # Repair method 1
@@ -66,11 +66,17 @@ class Repair:
             repaired.routes.append(route)
 
     # Support for repair method 2: Customer insertion
-    def _customer_insertion_random(self):
+    @staticmethod
+    def _customer_insertion_random(self, solution: VRPECSolution):
         """
         Sort un-served customers list into feasible position of 2E-VREC route until all customers have been tried.
         """
-        pass
+        repaired = solution.copy()
+        while repaired.unassigned_customers:
+            np.random.shuffle(repaired.unassigned_customers)
+            # Choose a random route to insert
+            vehicle_id = np.random.randint(0, len(repaired.routes) -1)
+
 
     # Support for repair method 2: Customer insertion
     def _customer_insertion_greedy(self):

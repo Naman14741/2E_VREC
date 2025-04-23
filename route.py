@@ -102,21 +102,24 @@ class VehicleRoute:
         )
         return total_demand
 
-    def get_robot_demand(self, form_station: int, to_station: int) -> float:
+    def get_robot_demand(self, from_station: int, to_station: int) -> float:
         """
-        Calculate the total demand of the robot of vehicle k from form_station to to_station.
-        :return: Total demand of the robot route.
+        Calculate the total demand of goods that need to be transferred for customers
+        between two consecutive stations in the robot route.
+        :param from_station: The starting station.
+        :param to_station: The ending station.
+        :return: Total demand of goods to be transferred.
         """
         total_demand = 0
         collecting = False
 
         for node_id, vehicle_type in self._robot_route:
-            if node_id == form_station:
+            if node_id == to_station and collecting:
+                break
+            if node_id == from_station:
                 collecting = True
             if collecting and vehicle_type == VehicleType.ROBOT_ONLY and node_id in self.customer_demand:
                 total_demand += self.customer_demand[node_id]
-            if node_id == to_station:
-                break
 
         return total_demand
 
@@ -165,56 +168,100 @@ class VehicleRoute:
             # Nối depot đến station
             self.add_station_van(station, VehicleType.VAN_CARRY_ROBOT, position=-1)
             self.add_station_robot(station, VehicleType.VAN_CARRY_ROBOT, position=-1)
-            self.remove_unassigned_station(station)
             # Nối station đến customer robot
             self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=-1)
             # Robot trở về station
             self.add_station_robot(station, VehicleType.ROBOT_ONLY, position=-1)
+            self.remove_unassigned_station(station)
+            return True
+        return False
 
     def open_van_route(self, customer: int):
         if len(self._van_route) == 2:  # Tuyến đường van mới
             self.add_customer_van(customer, VehicleType.VAN_CARRY_ROBOT, position=-1)
             self.add_customer_robot(customer, VehicleType.VAN_CARRY_ROBOT, position=-1)
+            return True
+        return False
 
     def insert_customer_robot_into_route(self, customer: int):
         """
         Insert a customer into the robot route.
         :param customer: The customer to insert.
         """
-        if len(self._robot_route) == 2:  # Tuyến đường van đã có khách nhưng robot chưa có
+        if len(self._robot_route) == 2:  # New robot route (only has depot start and end)
+            # No stations in route yet, so find nearest station to the customer
+            if not self.unassigned_stations:
+                return False
+
             station = station_nearest_customer(self.distance_matrix, self.unassigned_stations, customer)[0]
-            # Nối tuyến đường hiện tại đến station mới
-            self.add_station_robot(station, VehicleType.VAN_CARRY_ROBOT, position=-1)
-            self.add_station_van(station, VehicleType.VAN_CARRY_ROBOT, position=-1)
-            self.remove_unassigned_station(station)
-            # Tạo tuyến đường robot mới
-            self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=-1)
-            # Robot trở về station
-            self.add_station_robot(station, VehicleType.ROBOT_ONLY, position=-1)
-            return True
-        else:  # Nếu tuyến đường robot đã có khách
-            # Tìm vị trí chèn khách hàng sau cho không vi phạm ràng buộc: capacity
+            # Add station to both van and robot routes
+            if self.open_robot_route(customer, station):
+                return True
+        else:  # Robot route already exists
+            # First, check if there are existing robot trips from stations
+            station_occurrences = {}
+            for node, vehicle_type in self._robot_route:
+                if node in self.station_list:
+                    station_occurrences[node] = station_occurrences.get(node, 0) + 1
+
+            # Find stations that appear only twice (one as van-carry, one as robot-return)
+            # These already have one complete trip and can potentially accept another customer
             for i in range(len(self._robot_route) - 1):
-                if self._robot_route[i][0] in self.station_list:
-                    # Thêm khách hàng vào tuyến đường robot mới sau station chưa có tuyến robot
-                    if self._robot_route[i + 1][1] == VehicleType.VAN_CARRY_ROBOT:
-                        self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=i + 1)
-                        # Robot trở về station
-                        self.add_station_robot(self._robot_route[i][0], VehicleType.ROBOT_ONLY, position=i + 2)
-                        return True
-                    else:
-                        # Thêm khách hàng vào tuyến robot có sẵn
-                        from_station = self._robot_route[i][0]
-                        to_station = -1
-                        for j in range(i + 1, len(self._robot_route) - 1):
-                            if self._robot_route[j][0] in self.station_list:
-                                to_station = self._robot_route[j][0]
+                current_node = self._robot_route[i]
+
+                # Check if current node is a station with existing robot trip
+                if current_node[0] in self.station_list and current_node[1] == VehicleType.ROBOT_ONLY:
+                    from_station = current_node[0]
+
+                    # Only consider stations that appear exactly twice (already has one trip)
+                    if station_occurrences.get(from_station, 0) == 2:
+                        # Find the next customer after this station
+                        next_customer_pos = -1
+                        for j in range(i + 1, len(self._robot_route)):
+                            if self._robot_route[j][0] in self.customer_list:
+                                next_customer_pos = j
                                 break
-                        if to_station != -1 and self.get_robot_demand(from_station, to_station) + \
-                                self.customer_demand[customer] <= self.robot_params['capacity']:
-                            self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=i+1)
+
+                        if next_customer_pos != -1:
+                            # Check if adding this customer violates capacity
+                            # Calculate demand for this trip
+                            trip_demand = 0
+                            for j in range(i + 1, len(self._robot_route)):
+                                node = self._robot_route[j]
+                                if node[0] in self.station_list and node[1] == VehicleType.ROBOT_ONLY:
+                                    break
+                                if node[0] in self.customer_list:
+                                    trip_demand += self.customer_demand[node[0]]
+
+                            if trip_demand + self.customer_demand[customer] <= self.robot_params['capacity']:
+                                # Insert customer after the existing customer
+                                self.add_customer_robot(customer, VehicleType.ROBOT_ONLY,
+                                                        position=next_customer_pos + 1)
+                                return True
+
+            # If no suitable existing trip found, try to use a station that hasn't been used for a robot trip yet
+            for i in range(len(self._robot_route) - 1):
+                current_node = self._robot_route[i]
+                next_node = self._robot_route[i + 1]
+
+                # Check if current node is a station that appears exactly once (only as van-carry)
+                if (current_node[0] in self.station_list and
+                        current_node[1] == VehicleType.VAN_CARRY_ROBOT and
+                        station_occurrences.get(current_node[0], 0) == 1):
+
+                    from_station = current_node[0]
+
+                    # Make sure the next node isn't a robot trip already
+                    if next_node[1] == VehicleType.VAN_CARRY_ROBOT:
+                        # Check load capacity
+                        if self.customer_demand[customer] <= self.robot_params['capacity']:
+                            # Insert customer after the station
+                            self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=i + 1)
+                            # Robot returns to the same station
+                            self.add_station_robot(from_station, VehicleType.ROBOT_ONLY, position=i + 2)
                             return True
-        return False
+
+            return False
 
     def insert_customer_van_into_route(self, customer: int):
         """
@@ -228,5 +275,6 @@ class VehicleRoute:
             # Tìm vị trí chèn khách hàng sau cho không vi phạm ràng buộc: capacity
             if self.get_van_demand() + self.customer_demand[customer] <= self.van_params['capacity']:
                 self.add_customer_van(customer, VehicleType.VAN_CARRY_ROBOT, position=-1)
+                self.add_customer_robot(customer, VehicleType.VAN_CARRY_ROBOT, position=-1)
                 return True
         return False
