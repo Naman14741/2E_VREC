@@ -81,7 +81,7 @@ class Read:
                 'parking_nodes_set': parking_nodes_tuples,
                 'customers_set': customers_tuples,
                 'time_windows_set': time_windows_tuples,
-                'demands_set': data.get('demand_set', [[]])[i] if len(data.get('demand_set', [])) > i else []
+                'demands_set': data.get('demands_set', [[]])[i] if len(data.get('demands_set', [])) > i else []
             })
 
         testcase = max(0, min(testcase, len(output) - 1))  # Đảm bảo test nằm trong phạm vi hợp lệ
