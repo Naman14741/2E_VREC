@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set
+from typing import Dict, Tuple
 
 import numpy as np
 
@@ -19,7 +19,6 @@ class VRPECSolution:
                  customer_demand: Dict[int, float],
                  time_windows: Dict[int, Tuple[float, float]],
                  service_times: Dict[int, float],
-                 k_vehicles: int
                  ):
 
         self.distance_matrix: np.ndarray = distance_matrix
@@ -35,10 +34,9 @@ class VRPECSolution:
         self.customer_demand: Dict[int, float] = customer_demand
         self.time_windows: Dict[int, Tuple[float, float]] = time_windows
         self.service_time: Dict[int, float] = service_times
-        self.k_vehicles: int = k_vehicles
 
         self.unassigned_customers: List[int] = self.all_customers
-        self.routes: Dict[int, VehicleRoute] = {}
+        self.routes: List[VehicleRoute] = []
 
     def copy(self):
         new_solution = VRPECSolution(
@@ -52,43 +50,42 @@ class VRPECSolution:
             self.customer_demand.copy(),
             self.time_windows.copy(),
             self.service_time.copy(),
-            self.k_vehicles
         )
 
-        new_solution.routes = {k: v for k, v in self.routes.items()}
-        new_solution.unassigned_customers = List(self.unassigned_customers)
+        new_solution.routes = self.routes
+        new_solution.unassigned_customers = self.unassigned_customers
 
         return new_solution
 
     def objective_value(self) -> float:
         total_cost = 0
-        for vehicle_id, route in self.routes.items():
+        for route in self.routes:
             total_cost += route.get_route_cost()
         return total_cost
 
-    def initial_routes(self):
-        """
-        Initialize routes for each vehicle.
-        """
-        for i in range(self.k_vehicles):
-            self.routes[i] = VehicleRoute(self.distance_matrix, self.depot, self.van_params, self.robot_params)
-
     def initial_solution(self):
-        self.initial_routes()
+        while len(self.unassigned_customers) > 0:
+            np.random.shuffle(self.unassigned_customers)
+            customer = self.unassigned_customers[0]
 
-        np.random.shuffle(self.all_customers)
-        for customer in self.all_customers:
+            # Khởi tạo tuyến cho khách hàng
+            route = VehicleRoute(distance_matrix=self.distance_matrix, depot=self.depot, unassigned_stations=self.charging_stations)
             if customer in self.customers_robot_only:
-                vehicle_id = np.random.randint(0, self.k_vehicles)
-                if len(self.routes[vehicle_id].get_robot_route()) == 2: # Chưa chuyến nào
-                    station = np.random.choice(self.charging_stations)
-                    self.routes[vehicle_id].open_robot_route(customer, station)
-            else:
-                vehicle_id = np.random.randint(0, self.k_vehicles)
-                if len(self.routes[vehicle_id].get_van_route()) == 2:
-                    n = np.random.rand()
-                    if n < 0.5: # Mở tuyến robot
-                        station = np.random.choice(self.charging_stations)
-                        self.routes[vehicle_id].open_robot_route(customer, station)
-                    else: # Mở tuyến van
-                        self.routes[vehicle_id].open_van_route(customer)
+                # Nếu khách hàng chỉ phục vụ bởi robot
+                station = station_nearest_customer(self.distance_matrix, self.charging_stations, customer)[0]
+                route.open_robot_route(customer, station)
+                self.unassigned_customers.remove(customer)
+            else: # Nếu khách hàng có thể phục vụ bởi cả xe tải và robot
+                p = np.random.rand()
+                if p < 0.5:
+                    # Mở tuyến xe tải
+                    route.open_van_route(customer)
+                    self.unassigned_customers.remove(customer)
+                else:
+                    # Mở tuyến robot
+                    station = station_nearest_customer(self.distance_matrix, self.charging_stations, customer)[0]
+                    route.open_robot_route(customer, station)
+                    self.unassigned_customers.remove(customer)
+
+            # Thêm khách hàng vào tuyến
+            np.random.shuffle(self.unassigned_customers)

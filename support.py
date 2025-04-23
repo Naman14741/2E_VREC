@@ -19,6 +19,24 @@ def customer_nearest_station(dist_matrix, cus_list: List[int], station_idx):
 
     return nearest_customer, min_distance
 
+def customer_nearest_customer(dist_matrix, cus_list: List[int], cus_idx):
+    """
+    Find the nearest customer to a customer from a list of customers.
+    :param dist_matrix: The distance matrix.
+    :param cus_list: List of customer indices.
+    :param cus_idx: Index of the customer.
+    :return: Index of the nearest customer to the customer.
+    """
+    min_distance = float('inf')
+    nearest_customer = -1
+
+    for cus in cus_list:
+        if dist_matrix[cus_idx][cus] < min_distance:
+            min_distance = dist_matrix[cus_idx][cus]
+            nearest_customer = cus
+
+    return nearest_customer, min_distance
+
 def station_nearest_customer(dist_matrix, station_list: List[int], cus_idx):
     """
     Find the nearest customer to a station from a list of stations.

@@ -27,7 +27,7 @@ class VehicleRoute:
     Represents a van and robot route of vehicle number k in 2E-VREC problem
     """
 
-    def __init__(self, distance_matrix: np.ndarray, depot: int, van_params=Read().parameters()[0],
+    def __init__(self, distance_matrix: np.ndarray, depot: int, unassigned_stations: List[int], van_params=Read().parameters()[0],
                  robot_params=Read().parameters()[1]):
         self.distance_matrix: np.ndarray = distance_matrix
         self.depot: int = depot
@@ -41,6 +41,17 @@ class VehicleRoute:
         # List of node for robot k
         self._robot_route: List[Tuple[int, VehicleType]] = [(self.depot, VehicleType.VAN_CARRY_ROBOT),
                                                             (self.depot, VehicleType.VAN_CARRY_ROBOT)]
+
+        self.unassigned_stations: List[int] = unassigned_stations
+
+    def get_unassigned_stations(self) -> List[int]:
+        return self.unassigned_stations
+
+    def remove_unassigned_station(self, station: int):
+        if station in self.unassigned_stations:
+            self.unassigned_stations.remove(station)
+        else:
+            raise ValueError(f"Station {station} not found in unassigned stations.")
 
     def set_van_route(self, van_route: List[Tuple[int, VehicleType]]):
         self._van_route = van_route
@@ -72,10 +83,43 @@ class VehicleRoute:
                     'travel_cost_rate']
         return cost
 
-    def add_customer_robot(self, customer: int, vehicle_type: VehicleType, position= -2):
+    def get_van_demand(self, customer_demand: Dict[int, float]) -> float:
+        """
+        Calculate the total demand of the van and robot of vehicle k.
+        :return: Total demand of the van route.
+        """
+        total_demand = sum(
+            customer_demand.get(node[0], 0) for node in self._van_route
+        )
+        total_demand += sum(
+            customer_demand.get(node[0], 0) for node in self._robot_route
+            if node[1] == VehicleType.ROBOT_ONLY
+        )
+        return total_demand
+
+    def get_robot_demand(self, customer_demand: Dict[int, float], form_station: int, to_station: int) -> float:
+        """
+        Calculate the total demand of the robot of vehicle k from form_station to to_station.
+        :return: Total demand of the robot route.
+        """
+        total_demand = 0
+        collecting = False
+
+        for node_id, vehicle_type in self._robot_route:
+            if node_id == form_station:
+                collecting = True
+            if collecting and vehicle_type == VehicleType.ROBOT_ONLY and node_id in customer_demand:
+                total_demand += customer_demand[node_id]
+            if node_id == to_station:
+                break
+
+        return total_demand
+
+    # 1: Sau depot, -2: Trước depot cuối
+    def add_customer_robot(self, customer: int, vehicle_type: VehicleType, position= -1):
         self._robot_route.insert(position, (customer, vehicle_type))
 
-    def add_customer_van(self, customer: int, vehicle_type: VehicleType, position= -2):
+    def add_customer_van(self, customer: int, vehicle_type: VehicleType, position= -1):
         self._van_route.insert(position, (customer, vehicle_type))
 
     def remove_customer(self, customer: int, vehicle_type: VehicleType):
@@ -89,11 +133,11 @@ class VehicleRoute:
         elif vehicle_type == VehicleType.ROBOT_ONLY:
             self._robot_route.remove((customer, vehicle_type))
 
-    def add_station_robot(self, station: int, ve_type: VehicleType, position= -2):
-        self._robot_route.insert(position, (station, ve_type))
+    def add_station_robot(self, station: int, vehicle_type: VehicleType, position= -1):
+        self._robot_route.insert(position, (station, vehicle_type))
 
-    def add_station_van(self, station: int, ve_type: VehicleType, position= -2):
-        self._van_route.insert(position, (station, ve_type))
+    def add_station_van(self, station: int, vehicle_type: VehicleType, position= -1):
+        self._van_route.insert(position, (station, vehicle_type))
 
     def remove_station(self, station: int, vehicle_type: VehicleType):
         """
@@ -112,18 +156,17 @@ class VehicleRoute:
         return f"{van_route_str}\n{robot_route_str}"
 
     def open_robot_route(self, customer:int, station: int):
-        if len(self._robot_route) != 2 and len(self._van_route) != 2:
-            return
-        # Nối depot đến station
-        self.add_station_van(station, VehicleType.VAN_CARRY_ROBOT, position=-2)
-        self.add_station_robot(station, VehicleType.VAN_CARRY_ROBOT, position=-2)
-        # Nối station đến customer robot
-        self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=-2)
-        # Robot trở về station
-        self.add_station_robot(station, VehicleType.ROBOT_ONLY, position=-2)
+        if len(self._van_route) == 2: # Tuyến đường robot mới
+            # Nối depot đến station
+            self.add_station_van(station, VehicleType.VAN_CARRY_ROBOT, position=-1)
+            self.add_station_robot(station, VehicleType.VAN_CARRY_ROBOT, position=-1)
+            self.remove_unassigned_station(station)
+            # Nối station đến customer robot
+            self.add_customer_robot(customer, VehicleType.ROBOT_ONLY, position=-1)
+            # Robot trở về station
+            self.add_station_robot(station, VehicleType.ROBOT_ONLY, position=-1)
 
-    def open_van_route(self, customer:int, station: int):
-        if len(self._van_route) != 2:
-            return
-        self.add_customer_van(customer, VehicleType.VAN_CARRY_ROBOT, position=-2)
-        self.add_customer_robot(customer, VehicleType.VAN_CARRY_ROBOT, position=-2)
+    def open_van_route(self, customer:int):
+        if len(self._van_route) == 2: # Tuyến đường van mới
+            self.add_customer_van(customer, VehicleType.VAN_CARRY_ROBOT, position=-1)
+            self.add_customer_robot(customer, VehicleType.VAN_CARRY_ROBOT, position=-1)
